@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Killstreak Game</title>
+  <style>
+    body { 
+      font-family: sans-serif;
+      text-align: center;
+      background-image: url('images/warzone.jpg');
+      background-size: cover;
+      background-position: center;
+      color: white;
+      margin: 0;
+      padding: 0;
+    }
+
+    input, button {
+      padding: 10px;
+      margin: 10px;
+    }
+
+    #target {
+      width: 150px;
+      height: 150px;
+      display: none;
+      margin: 20px auto;
+      cursor: pointer;
+    }
+
+    #target img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    table {
+      margin: 20px auto;
+      border-collapse: collapse;
+      background: rgba(0, 0, 0, 0.5);
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px 16px;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Killstreak Reaction Game</h1>
+
+  <input type="text" id="player-id" placeholder="Enter Player ID">
+  <button onclick="startGame()">Start Game</button>
+  <button onclick="endGame()">End Game</button>
+
+  <div id="target" onclick="registerShot(true)">
+    <img src="images/shooter.jpg" alt="Target">
+  </div>
+
+  <h2>Leaderboard</h2>
+  <table id="leaderboard-table">
+    <thead>
+      <tr>
+        <th>Player</th>
+        <th>Score</th>
+        <th>Avg Reaction Time (ms)</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    let sessionId = null;
+    let startTime = null;
+    let targetTimeout = null;
+
+    async function startGame() {
+      const playerId = document.getElementById('player-id').value.trim();
+      if (!playerId) {
+        alert("Please enter a player ID");
+        return;
+      }
+
+      const res = await fetch('http://127.0.0.1:8003/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player_id: playerId })
+      });
+      const data = await res.json();
+      sessionId = data.session_id;
+      showTargetRandomly();
+    }
+
+    function showTargetRandomly() {
+      clearTimeout(targetTimeout);
+      targetTimeout = setTimeout(() => {
+        const target = document.getElementById('target');
+        startTime = Date.now();
+        target.style.display = 'block';
+      }, Math.random() * 2000 + 1000); // 1–3 second delay
+    }
+
+    async function registerShot(hit) {
+      const reactionTime = Date.now() - startTime;
+      document.getElementById('target').style.display = 'none';
+
+      await fetch('http://127.0.0.1:8003/shot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          hit: hit,
+          reaction_time: reactionTime
+        })
+      });
+
+      showTargetRandomly();
+    }
+
+    async function endGame() {
+      if (!sessionId) return;
+
+      const res = await fetch('http://127.0.0.1:8003/end', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId })
+      });
+      const data = await res.json();
+      alert(`Game ended! Score: ${data.score}, Avg Reaction Time: ${data.avg_reaction_time}ms`);
+
+      sessionId = null;
+      clearTimeout(targetTimeout);
+      document.getElementById('target').style.display = 'none';
+      await fetchLeaderboard();
+    }
+
+    async function fetchLeaderboard() {
+      const res = await fetch('http://127.0.0.1:8003/leaderboard');
+      const data = await res.json();
+      const tableBody = document.querySelector('#leaderboard-table tbody');
+      tableBody.innerHTML = '';
+
+      const leaderboard = data.leaderboard;
+
+      leaderboard.sort((a, b) => b.score - a.score);
+
+      leaderboard.forEach(player => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${player.player_id}</td>
+          <td>${player.score}</td>
+          <td>${player.avg_reaction_time}</td>
+        `;
+        tableBody.appendChild(row);
+      });
+    }
+
+    fetchLeaderboard(); // Load on page load
+  </script>
+
+</body>
+</html>

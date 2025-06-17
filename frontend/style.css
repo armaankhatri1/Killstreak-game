@@ -1,0 +1,34 @@
+body {
+  background-image: url('images/warzone.jpg');
+  background-size: 75%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  color: white;
+}
+
+#target {
+  width: 150px;
+  height: 150px;
+  display: none;
+  margin: 20px auto;
+  cursor: pointer;
+}
+
+#target img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+table {
+  margin: 20px auto;
+  border-collapse: collapse;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+th, td {
+  border: 1px solid #ccc;
+  padding: 8px 16px;
+  color: white;
+}
